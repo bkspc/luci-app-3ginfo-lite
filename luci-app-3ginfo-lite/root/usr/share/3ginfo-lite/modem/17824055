@@ -1,0 +1,59 @@
+# Tozed LT70-C (NCM)
+# Spreadtrum based. Looks like mostly stock spreadtrum firmware as well
+
+PROTO="ncm"
+
+at() {
+  sms_tool -D -d $DEVICE at "$1"
+}
+
+MODEL="Tozed LT70-C $(at AT+CGMM | xargs echo -n | cut -d' ' -f1)"
+FW=$(at AT+SPTZVER | grep SL8563 | xargs echo -n)
+
+OPERATOR_NAME=$(at 'AT+SPTZCMD="YXBwX2RlbW8gdGVzdF9uZXR3b3JrX2dldF9vcGVyYXRvcl9uYW1lfGdyZXAgT3xjdXQgLWIyNC18Y3V0IC1kJChlY2hvIC1lICcbJykgLWYx"' | grep S | cut -d':' -f2 | base64 -d)
+COPS="$OPERATOR_NAME"
+NR_CIMI=$(at AT+CIMI | xargs echo -n | cut -d' ' -f1)
+COPS_MCC=$(echo ${NR_CIMI} | cut -c1-3)
+COPS_MNC=$(echo ${NR_CIMI} | cut -c4-5)
+
+NR_IMEI=$(at "AT+CGSN" | xargs echo -n | cut -d' ' -f1)
+
+SPD_DATA=$(at "AT+SPENGMD=0,6,0" | xargs echo -n | awk '{print $1}')
+SPD_DATA2=$(at "AT+SPENGMD=0,0,6" | xargs echo -n | awk '{print $1}')
+
+RSSI="-$(echo $SPD_DATA2 | cut -d, -f75 | cut -d- -f3)"
+PBAND=$(echo $SPD_DATA | cut -d',' -f1)
+PCI=$(echo $SPD_DATA | cut -d',' -f3 | cut -d'-' -f2)
+EARFCN=$(echo $SPD_DATA | cut -d',' -f2 | cut -d'-' -f2)
+
+DATA=$(at 'AT+CREG?;+CCID;+ZRSSI?;+CSQ')
+
+CSQ=$(echo "$DATA" | grep CSQ | awk -F[,\ ] '/^\+CSQ/ {print $2}')
+if [ "x$CSQ" = "x" ]; then
+  CSQ=-1
+else
+	CSQ_PER=$(($CSQ * 100/31))
+fi
+
+REG=$(echo "$DATA" | grep CREG | cut -d',' -f2)
+CID_HEX=$(echo "$DATA" | grep CREG | cut -d',' -f4 | xargs echo)
+CID_DEC=$(printf "%d" 0x${CID_HEX})
+NR_ICCID=$(echo "$DATA" | grep CCID | xargs echo | awk '{print $2}')
+
+ZRSSI_DATA=$(echo "$DATA" | grep ZRSSI | awk '{print $2}')
+RSRP=$(echo $ZRSSI_DATA | cut -d',' -f1)
+RSRQ=$(echo $ZRSSI_DATA | cut -d',' -f2)
+SINR=$(echo $ZRSSI_DATA | cut -d',' -f4)
+
+CA_BAND=$(echo $SPD_DATA | cut -d',' -f2 | cut -d'-' -f1)
+[ "$CA_BAND" -ne 0 ] && S1BAND=$CA_BAND
+CA_PCI=$(echo $SPD_DATA | cut -d',' -f4 | cut -d'-' -f1)
+[ "$CA_PCI" -ne 0 ] && S1PCI=$CA_PCI
+CA_EARFCN=$(echo $SPD_DATA | cut -d',' -f3 | cut -d'-' -f1)
+[ "$CA_EARFCN" -ne 0 ] && S1EARFCN=$CA_EARFCN
+
+if [ "$CA_BAND" -ne 0 ]; then
+  MODE="LTE-A / $(band $PBAND) / $(band $CA_BAND)"
+else
+  MODE="LTE / $(band $PBAND)"
+fi
