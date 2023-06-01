@@ -11,7 +11,6 @@ Luci-app-3ginfo-lite is fork from https://github.com/obsy/packages/tree/master/e
 
 #### <img src="https://raw.githubusercontent.com/4IceG/Personal_data/master/dooffy_design_icons_EU_flags_Poland.png" height="24"> Luci-app-3ginfo-lite jest uproszczoną wersją projektu 3ginfo. Działa z modemami mPCI-E/M.2 oraz USB 3G/LTE.
 
-
 ``` bash
 Supported devices (tested devices):
  - Fibocom L860-GL
@@ -31,7 +30,7 @@ Supported devices (tested devices):
  - Huawei E5786 (mobile-wifi / HiLink)
  - Sierra AirCard 320U
  - Telit Ln940 / HP lt4220
- 
+
 Not tested devices (Not all data can be shown and scripts need to be corrected):
  - Fibocom FM150-AE
  - Sierra Wireless MC7710
@@ -41,6 +40,7 @@ Not tested devices (Not all data can be shown and scripts need to be corrected):
  - BroadMobi BM806U
  - Mikrotik R11e-LTE
  - HiLink modems (ZTE / Alcatel)
+ - Tozed ZLT S12 Pro
 
 ```
 
