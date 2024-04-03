@@ -1,4 +1,5 @@
 'use strict';
+'require baseclass';
 'require form';
 'require fs';
 'require view';
@@ -9,7 +10,7 @@
 'require tools.widgets as widgets';
 
 /*
-	Copyright 2021-2023 Rafał Wabik - IceG - From eko.one.pl forum
+	Copyright 2021-2024 Rafał Wabik - IceG - From eko.one.pl forum
 	
 	Licensed to the GNU General Public License v3.0.
 	
@@ -53,22 +54,22 @@ var mn = parseInt(m) || 100;
 if (vn > -50) { vn = -50 };
 if (vn < -110) { vn = -110 };
 var pc =  Math.floor(100*(1-(-50 - vn)/(-50 - mn)));
-		if (vn >= -74) 
+		if (vn > -70) 
 			{
 			pg.firstElementChild.style.background = 'lime';
 			var tip = _('Very good');
 			};
-		if (vn >= -85 && vn <= -75) 
+		if (vn >= -85 && vn <= -70) 
 			{
 			pg.firstElementChild.style.background = 'yellow';
 			var tip = _('Good');
 			};
-		if (vn >= -93 && vn <= -86) 
+		if (vn >= -100 && vn <= -86) 
 			{
 			pg.firstElementChild.style.background = 'darkorange';
 			var tip = _('Weak');
 			};
-		if (vn < -94) 
+		if (vn < -100) 
 			{
 			pg.firstElementChild.style.background = 'red';
 			var tip = _('Very weak');
@@ -85,18 +86,18 @@ var vn = parseInt(v) || 0;
 var mn = parseInt(m) || 100;
 if (vn > -50) { vn = -50 };
 if (vn < -140) { vn = -140 };
-var pc =  Math.floor(120*(1-(-50 - vn)/(-50 - mn)));
-		if (vn >= -79 ) 
+var pc =  Math.floor(120*(1-(-50 - vn)/(-70 - mn)));
+		if (vn >= -80 ) 
 			{
 			pg.firstElementChild.style.background = 'lime';
 			var tip = _('Very good');
 			};
-		if (vn >= -90 && vn <= -80) 
+		if (vn >= -90 && vn <= -79) 
 			{
 			pg.firstElementChild.style.background = 'yellow';
 			var tip = _('Good');
 			};
-		if (vn >= -100 && vn <= -91) 
+		if (vn >= -100 && vn <= -89) 
 			{
 			pg.firstElementChild.style.background = 'darkorange';
 			var tip = _('Weak');
@@ -116,8 +117,8 @@ function sinr_bar(v, m) {
 var pg = document.querySelector('#sinr')
 var vn = parseInt(v) || 0;
 var mn = parseInt(m) || 100;
-var pc = Math.floor(100-(100*(1-((mn - vn)/(mn - 31)))));
-		if (vn >= 21 ) 
+var pc = Math.floor(100-(100*(1-((mn - vn)/(mn - 40)))));
+		if (vn > 20 ) 
 			{
 			pg.firstElementChild.style.background = 'lime';
 			var tip = _('Excellent');
@@ -149,17 +150,17 @@ var vn = parseInt(v) || 0;
 var mn = parseInt(m) || 100;
 var pc = Math.floor(115-(100/mn)*vn);
 if (vn > 0) { vn = 0; };
-		if (vn >= -9 ) 
+		if (vn >= -10 ) 
 			{
 			pg.firstElementChild.style.background = 'lime';
 			var tip = _('Excellent');
 			};
-		if (vn >= -15 && vn <= -10) 
+		if (vn >= -15 && vn <= -9) 
 			{
 			pg.firstElementChild.style.background = 'yellow';
 			var tip = _('Good');
 			};
-		if (vn >= -20 && vn <= -16) 
+		if (vn >= -20 && vn <= -14) 
 			{
 			pg.firstElementChild.style.background = 'darkorange';
 			var tip = _('Mid cell');
@@ -183,27 +184,254 @@ function SIMdata(data) {
 		_('SIM Slot'), sdata.simslot,
 		_('SIM IMSI'), sdata.imsi,
 		_('SIM ICCID'), sdata.iccid,
-		_('Modem IMEI'), sdata.imei
+		_('Modem IMEI'), sdata.imei,
+		_('Hint'), _('CLICK ME TO SEE NEW MENU')
 		]);
 	}
 	else {
 		return ui.itemlist(E('span'), [
 		_('SIM IMSI'), sdata.imsi,
 		_('SIM ICCID'), sdata.iccid,
-		_('Modem IMEI'), sdata.imei
+		_('Modem IMEI'), sdata.imei,
+		_('Hint'), _('CLICK ME TO SEE NEW MENU')
 		]);
 	}
 }
 
-return view.extend({
-	formdata: { threeginfo: {} },
+function active_select() {
+	uci.load('modemdefine').then(function() {
+		var modemz = (uci.get('modemdefine', '@modemdefine[1]', 'comm_port'));
+		if (!modemz) {
+			document.getElementById("modc").disabled = true;
+		}
+		else {
+			document.getElementById("modc").disabled = false;
+		}
+	});
+}
 
+
+return view.extend({
+
+
+modemDialog: baseclass.extend({
+		__init__: function(title, description, callback) {
+			this.title       = title;
+			this.description = description;
+			this.callback    = callback;
+		},
+
+		load: function() {
+			return uci.load('modemdefine');
+		},
+
+		render: function(content) {
+
+			var sections = uci.sections('modemdefine');
+			var portM = sections.length;
+
+    			var result = "";
+    			for (var i = 1; i < portM; i++) {
+       			       	result += sections[i].comm_port + '_' + sections[i].network + '#' + sections[i].comm_port + ' - ' + sections[i].modem + ' (' + sections[i].user_desc + ');';
+    			}
+			var result = result.slice(0, -1);
+			var result = result.replace("(undefined)", "");
+
+			ui.showModal(this.title, [
+				E('div', { 'class': 'cbi-section' }, [
+					E('div', { 'class': 'cbi-section-descr' }, this.description),
+					E('div', { 'class': 'cbi-section' },
+						E('p', {},
+							E('div', { 'class': 'cbi-value' }, [
+							E('p'),
+							E('label', { 'class': 'cbi-value-title' }, [ _('Modem') ]),
+							E('div', { 'class': 'cbi-value-field' }, [
+								E('select', { 'class': 'cbi-input-select',
+										'id': 'mselect',
+										'style': 'margin:0px 0; width:100%;',
+										},
+									(result || "").trim().split(/;/).map(function(cmd) {
+										var fields = cmd.split(/#/);
+										var name = fields[1];
+										var code = fields[0];
+									return E('option', { 'value': code }, name ) })
+
+								)
+							]) 
+						]),
+						)
+					),
+				]),
+				E('div', { 'class': 'right' }, [
+					E('button', {
+						'class': 'btn',
+						'click': ui.createHandlerFn(this, this.handleDissmis),
+					}, _('Cancel')),
+
+					' ',
+					E('button', {
+						'id': 'btn_save',
+						'class': 'btn cbi-button-positive important',
+						'click': ui.createHandlerFn(this, this.handleSave),
+					}, _('Save')),
+
+				]),
+			]);
+		},
+
+		handleSave: function(ev) {
+
+			return uci.load('modemdefine').then(function() {
+
+				var vx = document.getElementById('mselect').value;
+				var marr = vx.split('_');
+
+				uci.set('modemdefine', '@general[0]', 'main_modem', marr[0].toString());
+				uci.set('modemdefine', '@general[0]', 'main_network', marr[1].toString());
+
+
+				uci.save();
+				uci.apply();
+
+				window.setTimeout(function() {
+					if (!poll.active()) poll.start();
+					location.reload();
+					//ev.target.blur();
+				}, 2000).finally();
+			});
+
+		},
+
+		handleDissmis: function(ev) {
+				ui.hideModal();
+				if (!poll.active()) poll.start();
+		},
+
+		show: function() {
+			ui.showModal(null,
+				E('p', { 'class': 'spinning' }, _('Loading'))
+			);
+			poll.stop();
+			this.load().then(content => {
+				ui.hideModal();
+				return this.render(content);
+			}).catch(e => {
+				ui.hideModal();
+				return this.error(e);
+			})
+		},
+	}),
+
+simDialog: baseclass.extend({
+		__init__: function(title, description, callback) {
+			this.title       = title;
+			this.description = description;
+			this.callback    = callback;
+		},
+
+		load: function() {
+			return L.resolveDefault(fs.exec_direct('/usr/share/3ginfo-lite/3ginfo.sh', [ 'json' ]));
+		},
+
+		render: function(content) {
+
+			let json = JSON.parse(content);
+
+			if (json) {
+				if (!json.imei.length > 2) {
+					return false,
+					       poll.start()
+				}
+			}
+
+
+			ui.showModal(this.title, [
+				E('div', { 'class': 'cbi-section' }, [
+					E('div', { 'class': 'cbi-section-descr' }, this.description),
+					E('div', { 'class': 'cbi-section' },
+						E('p', {},
+							E('div', { 'class': 'cbi-value' }, [
+							E('p'),
+							E('label', { 'class': 'cbi-value-title' }, [ _('SIM IMSI') ]),
+							E('div', { 'class': 'cbi-value-field' }, [
+								E('input', {
+									'class': 'cbi-input-text',
+									'readonly': 'readonly',
+									'value': json.imsi
+								}, null),
+							]),
+							E('label', { 'class': 'cbi-value-title' }, [ _('SIM ICCID') ]),
+							E('div', { 'class': 'cbi-value-field' }, [
+								E('input', {
+									'class': 'cbi-input-text',
+									'readonly': 'readonly',
+									'value': json.iccid
+								}, null),
+							]),
+							E('label', { 'class': 'cbi-value-title' }, [ _('Modem IMEI') ]),
+							E('div', { 'class': 'cbi-value-field' }, [
+								E('input', {
+									'class': 'cbi-input-text',
+									'readonly': 'readonly',
+									'value': json.imei
+								}, null),
+							])
+
+						]),
+						)
+					),
+				]),
+				E('div', { 'class': 'right' }, [
+					E('button', {
+						'class': 'btn',
+						'click': ui.createHandlerFn(this, this.handleDissmis),
+					}, _('Close')),
+				]),
+			]);
+		},
+
+		handleDissmis: function(ev) {
+				ui.hideModal();
+				if (!poll.active()) poll.start();
+		},
+
+		show: function() {
+			ui.showModal(null,
+				E('p', { 'class': 'spinning' }, _('Loading'))
+			);
+			poll.stop();
+			this.load().then(content => {
+				ui.hideModal();
+				return this.render(content);
+			}).catch(e => {
+				ui.hideModal();
+				return this.error(e);
+			})
+		},
+	}),
+
+
+	formdata: { threeginfo: {} },
+	
 	load: function() {
 		return L.resolveDefault(fs.exec_direct('/usr/share/3ginfo-lite/3ginfo.sh', [ 'json' ]));
 	},
 
 	render: function(data) {
 		var m, s, o;
+
+		active_select();
+
+		var upModemDialog = new this.modemDialog(
+			_('Defined modems'),
+			_('Interface for selecting user defined modems.'),
+		);
+
+		var upSIMDialog = new this.simDialog(
+			_('SIM card menu'),
+			_('Information read from the SIM card and device.'),
+		);
+
 
 		if (data != null){
 		try {
@@ -256,8 +484,9 @@ return view.extend({
 					.then(function(res) {
 					var json = JSON.parse(res);
 
+				if (!json.cport.includes('192.')) {
 					if (json.signal == '0' || json.signal == '') {
-						fs.exec('sleep 1');
+						fs.exec('sleep 3');
 							if (json.signal == '0' || json.signal == '' || json.signal == '-') {
 							L.ui.showModal(_('3ginfo-lite'), [
 							E('p', { 'class': 'spinning' }, _('Waiting to read data from the modem...'))
@@ -271,6 +500,7 @@ return view.extend({
 					else {
 					L.hideModal();
 					}
+				}
 					
 					var icon, wicon, ticon, t;
 					var wicon = L.resource('icons/loading.gif');
@@ -295,41 +525,36 @@ return view.extend({
 
 					if (document.getElementById('signal')) {
 						var view = document.getElementById("signal");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
 						view.innerHTML = String.format('<medium>%d%%</medium><br/>' + '<img style="padding-left: 10px;" src="%s"/>', p, icon);
-						}
 					}
 
 					if (document.getElementById('connst')) {
 						var view = document.getElementById("connst");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
 						if (json.connt == '' || json.connt == '-') {
 						view.innerHTML = String.format('<img style="width: 16px; height: 16px; vertical-align: middle;" src="%s"/>' + ' ' +_('Waiting for connection data...'), wicon, p);
 						}
 						else {
 						view.innerHTML = String.format('<img style="width: 16px; height: 16px; vertical-align: middle;" src="%s"/>' + ' ' + json.connt + ' ' + ' | \u25bc\u202f' + json.connrx + ' \u25b2\u202f' + json.conntx, ticon, t);
 						}
-						}
 					}
 
 					if (document.getElementById('operator')) {
 						var view = document.getElementById("operator");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.operator_name == '') { 
+						if (!json.operator_name.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.operator_name;
 						}
+					}
+
+					if (document.getElementById('location')) {
+						var view = document.getElementById("location");
+						if (!json.location.length > 1) { 
+						view.textContent = '-';
+						}
+						else {
+						view.innerHTML = json.location;
 						}
 					}
 
@@ -362,76 +587,51 @@ return view.extend({
 
 					if (document.getElementById('mode')) {
 						var view = document.getElementById("mode");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.mode == '') { 
+						if (!json.mode.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.mode;
 						}
-						}
 					}
 
 					if (document.getElementById('modem')) {
 						var view = document.getElementById("modem");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.modem == '') { 
+						if (!json.modem.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.modem;
 						}
-						}
 					}
 
 					if (document.getElementById('fw')) {
 						var view = document.getElementById("fw");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.firmware == '') { 
+						if (!json.firmware.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.firmware;
 						}
-						}
 					}
 
 					if (document.getElementById('cport')) {
 						var view = document.getElementById("cport");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.cport == '') { 
+						if (!json.cport.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.cport;
 						}
-						}
 					}
 
 					if (document.getElementById('protocol')) {
 						var view = document.getElementById("protocol");
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-						if (json.protocol == '') { 
+						if (!json.protocol.length > 1) { 
 						view.textContent = '-';
 						}
 						else {
 						view.textContent = json.protocol;
-						}
 						}
 					}
 
@@ -439,8 +639,8 @@ return view.extend({
 						var view = document.getElementById("temp");
 						var viewn = document.getElementById("tempn");
 						var t = json.mtemp;
-						if (t == '') { 
-						viewn.style.display = "none";
+						if (!t.length > 1) { 
+						viewn.style.display = 'none';
 						}
 						else {
 						view.textContent = t.replace('&deg;', '°');
@@ -449,9 +649,8 @@ return view.extend({
 
 					if (document.getElementById('csq')) {
 						var view = document.getElementById("csq");
-						var viewn = document.getElementById("csqn");
 						if (json.signal == 0 || json.signal == '') {
-						viewn.style.display = "none";
+						view.style.visibility = 'hidden';
 						}
 						else {
 						if (json.csq == '') { 
@@ -465,11 +664,11 @@ return view.extend({
 
 					if (document.getElementById('rssi')) {
 						var view = document.getElementById("rssi");
-						var viewn = document.getElementById("rssin");
 						if (json.rssi == '') { 
-						viewn.style.display = "none";
+						view.style.visibility = 'hidden';
 						}
 						else {
+							view.style.visibility = 'visible';
 							var z = json.rssi;
 							if (z.includes('dBm')) { 
 							var rssi_min = -110;
@@ -484,11 +683,11 @@ return view.extend({
 
 					if (document.getElementById('rsrp')) {
 						var view = document.getElementById('rsrp');
-						var viewn = document.getElementById("rsrpn");
 						if (json.rsrp == '') { 
-						viewn.style.display = "none";
+						view.style.visibility = 'hidden';
 						}
 						else {
+							view.style.visibility = 'visible';
 							var z = json.rsrp;
 							if (z.includes('dBm')) { 
 							var rsrp_min = -140;
@@ -504,11 +703,11 @@ return view.extend({
 
 					if (document.getElementById('sinr')) {
 						var view = document.getElementById("sinr");
-						var viewn = document.getElementById("sinrn");
 						if (json.sinr == '') { 
-						viewn.style.display = "none";
+						view.style.visibility = 'hidden';
 						}
 						else {
+							view.style.visibility = 'visible';
 							var z = json.sinr;
 							if (z.includes('dB')) { 
 							view.textContent = json.sinr;
@@ -522,11 +721,11 @@ return view.extend({
 
 					if (document.getElementById('rsrq')) {
 						var view = document.getElementById("rsrq");
-						var viewn = document.getElementById("rsrqn");
 						if (json.rsrq == '') { 
-						viewn.style.display = "none";
+						view.style.visibility = 'hidden';
 						}
 						else {
+							view.style.visibility = 'visible';
 							var z = json.rsrq;
 							if (z.includes('dB')) { 
 							view.textContent = json.rsrq;
@@ -550,56 +749,38 @@ return view.extend({
 
 					if (document.getElementById('lac')) {
 						var view = document.getElementById("lac");
-						if (json.lac_dec == '' || json.lac_hex == '') { 
-						var lc = json.lac_dec   + ' ' + json.lac_hex;
-						var ld = lc.split(' ').join('');
-						view.textContent = ld;
+						var viewn = document.getElementById("lacn");
+						if (json.lac_dec.length < 2 || json.lac_hex.length < 2) { 
+						viewn.style.display = "none";
 						}
 						else {
-						view.innerHTML = json.lac_dec + ' (' + json.lac_hex + ')';
+							if (json.lac_dec == '' || json.lac_hex == '') { 
+							var lc = json.lac_dec   + ' ' + json.lac_hex;
+							var ld = lc.split(' ').join('');
+							view.textContent = ld;
+							}
+							else {
+							view.innerHTML = json.lac_dec + ' (' + json.lac_hex + ')';
+							}
 						}
-
 					}
 
 					if (document.getElementById('tac')) {
 						var view = document.getElementById("tac");
 						var tac_dh, tac_dec_hex, lac_dec_hex;
-						if (json.signal == 0 || json.signal == '') {
-						view.textContent = '-';
-						}
-						else {
-							if (json.tac_hex == null || json.tac_hex == '' || json.tac_hex == '-') {
+							if (json.tac_d.length > 1 || json.tac_h.length > 1) {
 							var tac_dh =  json.tac_d + ' (' + json.tac_h + ')';
-								if (tac_dh.includes(' ()') && json.tac_d == null || json.tac_d == '') {
-									view.textContent = '-';
-								} else {
 									view.textContent = tac_dh;
-								};
 							}
 							else {
-								var tac_dec_hex = json.tac_dec + ' (' + json.tac_hex + ')';
-									if (tac_dec_hex.includes(' ()') && json.tac_dec == null || json.tac_dec == '') {
-										view.textContent = '-';
-									} else {
-										view.textContent = tac_dec_hex;
-									};
-								var lac_dec_hex = json.tac_dec + ' (' + json.tac_hex + ')';
-									if (lac_dec_hex.includes(' ()') && json.tac_dec == null || json.tac_dec == '') {
-										view.textContent = '-';
-									} else {
-										view.textContent = lac_dec_hex;
-									};
-								if (json.tac_hex == json.lac_hex && json.tac_dec == '') {
-								var lac_dec_hex = json.lac_dec + ' (' + json.tac_hex + ')';
-									if (lac_dec_hex.includes(' ()') && json.tac_hex == null || json.tac_hex == '' && json.lac_hex == null || json.lac_hex == '') {
-										view.textContent = '-';
-									} else {
-										view.textContent= lac_dec_hex;
-									};
+								if (json.tac_dec.length > 1 || json.tac_hex.length > 1) {
+									var tac_dh =  json.tac_dec + ' (' + json.tac_hex + ')';
+									view.textContent = tac_dh;
 								}
-
+								else {
+									view.textContent = '-';
+								}
 							}
-						}
 					}
 
 					if (document.getElementById('cid')) {
@@ -692,26 +873,37 @@ return view.extend({
 				});	
 
 				}
-
 			}	
-
 
 		} catch (err) {
 				ui.addNotification(null, E('p', _('Error: ') + err.message), 'error');
 				}
-
 		}		
 
 		var info = _('More information about the 3ginfo on the %seko.one.pl forum%s.').format('<a href="https://eko.one.pl/?p=openwrt-3ginfo" target="_blank">', '</a>');
 		m = new form.JSONMap(this.formdata, _('3ginfo-lite'), info);
 
-		s = m.section(form.TypedSection, '3ginfo', '', _(''));
+		s = m.section(form.TypedSection, '3ginfo', '', null);
 		s.anonymous = true;
 
 		s.render = L.bind(function(view, section_id) {
 
 			return E('div', { 'class': 'cbi-section' }, [
-				E('h4', {}, [ _('General Information') ]),
+
+			E('div', { 'class': 'right' }, [
+				E('button', {
+					'id': 'modc',
+					'style': 'position:relative; display:block; margin:0 !important; margin-top:-3% !important; left:95%; top:',
+ 					'disabled': 'true',
+					'data-tooltip': _('Modem selection menu'),
+					'class': 'btn cbi-button',
+					'click': ui.createHandlerFn(this, function() {
+							return upModemDialog.show();
+					}),
+				}, _('☰')),
+			]),
+
+			E('h4', {}, [ _('General Information') ]),
 			E('table', { 'class': 'table' }, [
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '33%' }, [ _('Signal strength')]),
@@ -719,22 +911,31 @@ return view.extend({
 					]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '33%' }, [ _('Operator')]),
-					E('td', { 'class': 'td left', 'id': 'operator' }, [ '-' ]),
+					E('td', { 'class': 'td left' }, [
+						E('div', { 'class': 'right' }, [
+							E('div', { 'style': 'text-align:left;font-size:100%', 'id': 'operator' }, [ '-' ]),
+							E('div', { 'style': 'text-align:left;font-size:66%', 'id': 'location' }, [ '-' ]),
+						]),
 					]),
+				]),
 				E('tr', { 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '33%' }, [ _('SIM status')]),
 					E('td', { 'class': 'td left'}, [
 						E('span', {
 							'class': 'ifacebadge',
-							'title': '',
+							'title': null,
 							'id': 'simv',
 							'style': 'visibility: hidden; max-width:3em; display: inline-block;',
+							'click': ui.createHandlerFn(this, function() {
+									return upSIMDialog.show();
+							}),
+							
 						}, [
 							E('div', { 'class': 'ifacebox-body' }, [
 							E('div', { 'class': 'cbi-tooltip-container' }, [
 							E('img', {
 								'src': L.resource('icons/sim1m.png'),
-								'style': 'width:24px; height:auto',
+								'style': 'width:24px; height:auto; padding: 0px',
 								'title': _(''),
 								'class': 'middle',
 							}),
@@ -791,7 +992,7 @@ return view.extend({
 					E('td', { 'class': 'td left', 'width': '33%' }, [ _('TAC')]),
 					E('td', { 'class': 'td left', 'id': 'tac' }, [ '-' ]),
 					]),
-				E('tr', { 'class': 'tr' }, [
+				E('tr', { 'id': 'lacn', 'class': 'tr' }, [
 					E('td', { 'class': 'td left', 'width': '33%' }, [ _('LAC')]),
 					E('td', { 'class': 'td left', 'id': 'lac' }, [ '-' ]),
 					]),
@@ -857,23 +1058,23 @@ return view.extend({
 						))
 					]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left', 'width': '33%' }, [ _('Primary band | PCI & EARFCN')]),
+					E('td', { 'class': 'td left', 'width': '33%' }, [ _('Primary band (PCC) | PCI & EARFCN')]),
 					E('td', { 'class': 'td left', 'id': 'pband' }, [ '-' ]),
 					]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (S1)')]),
+					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (SCC1)')]),
 					E('td', { 'class': 'td left', 'id': 's1band' }, [ '-' ]),
 					]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (S2)')]),
+					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (SCC2)')]),
 					E('td', { 'class': 'td left', 'id': 's2band' }, [ '-' ]),
 					]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (S3)')]),
+					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (SCC3)')]),
 					E('td', { 'class': 'td left', 'id': 's3band' }, [ '-' ]),
 					]),
 				E('tr', { 'class': 'tr' }, [
-					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (S4)')]),
+					E('td', { 'class': 'td left', 'width': '33%' }, [ _('CA band (SCC4)')]),
 					E('td', { 'class': 'td left', 'id': 's4band' }, [ '-' ]),
 					]),
 
@@ -881,7 +1082,7 @@ return view.extend({
 			]);
 		}, o, this);
 
-		s = m.section(form.TypedSection, 'threeginfo', _(''));
+		s = m.section(form.TypedSection, 'threeginfo', null);
 		s.anonymous = true;
 		s.addremove = false;
 
