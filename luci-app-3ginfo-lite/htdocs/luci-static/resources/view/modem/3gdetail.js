@@ -549,13 +549,14 @@ simDialog: baseclass.extend({
 					}
 
 					if (document.getElementById('location')) {
-						var view = document.getElementById("location");
-						if (!json.location.length > 1) { 
-						view.textContent = '-';
+						var viewloc = document.getElementById("location");
+						if (!json.location.length > 2) { 
+						viewloc.style.display = 'none';
 						}
 						else {
-						view.innerHTML = json.location;
+						viewloc.innerHTML = json.location;
 						}
+
 					}
 
 					if (document.getElementById('sim')) {
@@ -579,8 +580,14 @@ simDialog: baseclass.extend({
 						if (json.registration == '3') { 
 							view.textContent = _('Registering denied');
 						}
-						if (json.registration == '5' || json.registration == '7') { 
+						if (json.registration == '5') { 
 							view.textContent = _('Registered (roaming)');
+						}
+						if (json.registration == '6') { 
+							view.textContent = _('Registered, only SMS');
+						}
+						if (json.registration == '7') { 
+							view.textContent = _('Registered (roaming), only SMS');
 						}
 					}
 					}
@@ -925,7 +932,7 @@ simDialog: baseclass.extend({
 							'class': 'ifacebadge',
 							'title': null,
 							'id': 'simv',
-							'style': 'visibility: hidden; max-width:3em; display: inline-block;',
+							'style': 'visibility: hidden; margin:0 auto; padding: 4px;',
 							'click': ui.createHandlerFn(this, function() {
 									return upSIMDialog.show();
 							}),
@@ -935,7 +942,7 @@ simDialog: baseclass.extend({
 							E('div', { 'class': 'cbi-tooltip-container' }, [
 							E('img', {
 								'src': L.resource('icons/sim1m.png'),
-								'style': 'width:24px; height:auto; padding: 0px',
+								'style': 'width:24px; height:auto; padding: 1%; margin:0 auto;',
 								'title': _(''),
 								'class': 'middle',
 							}),
